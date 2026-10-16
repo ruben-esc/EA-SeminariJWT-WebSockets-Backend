@@ -8,6 +8,15 @@ const createBook = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const book = await BookService.createBook(req.body);
 
+        // Obtenemos la instancia de socket.io y emitimos el evento global a todos los clientes
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('book:created', {
+                title: book.title,
+                message: `Se ha añadido un nuevo libro: ${book.title}`
+            });
+        }
+
         // Si se ha creado correctamente devolvemos el libro creado
         // El codigo 201 indica que se ha creado un recurso nuevo
         res.status(201).json({ book });

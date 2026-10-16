@@ -78,7 +78,8 @@ const StartServer = () => {
     const server = http.createServer(router);
 
     /** Chat (socket.io) */
-    StartChat(server);
+    const io = StartChat(server);
+    router.set('io', io); // guardamos la instancia de socket.io en el router para poder usarla en los controladores.
 
     server.listen(config.server.port, () => Logging.info(`Server is running on port ${config.server.port}`));
 };
