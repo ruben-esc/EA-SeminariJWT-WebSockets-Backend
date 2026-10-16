@@ -1,19 +1,24 @@
 import express from 'express';
-
 import controller from '../controllers/Auth';
-
 import { Schemas, ValidateJoi } from '../middleware/Joi';
 
-// Rutas de autenticacion. Son publicas: no piden token (refresh se autentica con su propio
-// refresh token, que va en el body). Cada una valida el body con Joi y llama a su controlador.
+// Rutas de autenticacion. Son publicas: no piden token en la cabecera Authorization
+// (refresh y logout usan la cookie HttpOnly que se envía automáticamente).
 const router = express.Router();
+
 router.post('/register', ValidateJoi(Schemas.auth.register), controller.register);
 router.post('/login', ValidateJoi(Schemas.auth.login), controller.login);
-router.post('/refresh', ValidateJoi(Schemas.auth.refresh), controller.refresh);
+
+// Quitamos ValidateJoi porque el token ya no viene en el body, viene en la cookie
+router.post('/refresh', controller.refresh);
+
+// Añadimos la nueva ruta de logout
+router.post('/logout', controller.logout);
+
 export = router;
 
-// Documentacion de Swagger de las tres rutas.
-// security: [] quita el candado: son las unicas rutas que no necesitan token.
+// Documentacion de Swagger de las cuatro rutas.
+// security: [] quita el candado: no necesitan el access token.
 
 /**
  * @openapi
@@ -41,7 +46,7 @@ export = router;
  *   post:
  *     tags: [Auth]
  *     summary: Inicia sesion
- *     description: Devuelve el access token (para la cabecera Authorization), el refresh token y el usuario.
+ *     description: Devuelve el access token y el usuario en el JSON. Además, guarda el refresh token en una cookie HttpOnly.
  *     security: []
  *     requestBody:
  *       required: true
@@ -57,13 +62,8 @@ export = router;
  *   post:
  *     tags: [Auth]
  *     summary: Pide un access token nuevo
- *     description: Se usa cuando el access token ha caducado. Se envia el refresh token que devolvio el login.
+ *     description: Lee el refresh token de la cookie HttpOnly y devuelve un nuevo access token si es válido.
  *     security: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema: { $ref: '#/components/schemas/RefreshInput' }
  *     responses:
  *       200:
  *         description: Access token nuevo
@@ -71,5 +71,17 @@ export = router;
  *           application/json:
  *             example: { token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... }
  *       401: { $ref: '#/components/responses/Unauthorized' }
- *       422: { $ref: '#/components/responses/Unprocessable' }
+ *
+ * /auth/logout:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Cierra la sesión
+ *     description: Borra la cookie HttpOnly que contiene el refresh token.
+ *     security: []
+ *     responses:
+ *       200:
+ *         description: Sesión cerrada correctamente y cookie eliminada
+ *         content:
+ *           application/json:
+ *             example: { message: "Sesión cerrada correctamente" }
  */
